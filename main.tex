@@ -1,0 +1,101 @@
+
+\documentclass[11pt,a4paper,german]{article} % document type and language
+
+\usepackage{babel}   % multi-language support
+\usepackage{float}   % floats
+\usepackage{url}     % url
+
+\usepackage[l2tabu,orthodox]{nag}  % force newer (and safer) LaTeX commands
+\usepackage[utf8]{inputenc}        % set character set to support some UTF-8
+                                   %   (unicode). Do NOT use this with
+                                   %   XeTeX/LuaTeX!
+\usepackage{babel}                 % multi-language support
+\usepackage{sectsty}               % allow redefinition of section command formatting
+\usepackage{tabularx}              % more table options
+\usepackage{titling}               % allow redefinition of title formatting
+\usepackage{imakeidx}              % create and index of words
+\usepackage{xcolor}                % more colour options
+\usepackage{enumitem}              % more list formatting options
+\usepackage{tocloft}               % redefine table of contents, new list like objects
+
+\usepackage{fancyhdr}
+\usepackage{hyperref} % Load hyperref package
+
+
+\pretitle{
+  \begin{flushright}         % align text to right
+    \fontsize{40}{60}        % set font size and whitespace
+    \usefont{OT1}{phv}{b}{n} % change the font to bold (b), normally shaped (n)
+                             %   Helvetica (phv)
+    \selectfont              % force LaTeX to search for metric in its mapping
+                             %   corresponding to the above font size definition
+}
+\posttitle{
+  \par                       % end paragraph
+  \end{flushright}           % end right align
+  \vskip 0.5em               % add vertical spacing of 0.5em
+}
+\preauthor{
+  \begin{flushright}
+    \large                   % font size
+    \lineskip 0.5em          % inter line spacing
+    \usefont{OT1}{phv}{m}{n}
+}
+\postauthor{
+  \par
+  \end{flushright}
+}
+\predate{
+  \begin{flushright}
+  \large
+  \lineskip 0.5em
+  \usefont{OT1}{phv}{m}{n}
+}
+\postdate{
+  \par
+  \end{flushright}
+}
+
+\title{Recipeer -- Rezeptesammlung}
+
+\begin{document}
+\maketitle
+% document contents
+\newpage
+
+\tableofcontents
+
+\newpage
+\section{Raspberry Chocolate Tiramisu}
+\lhead{}\chead{Serves 4}\rhead{V}
+\lfoot{Prep time:}\rfoot{Cook time:}
+\begin{multicols}{2}
+{\Large Instructions}
+\begin{itemize}
+    \item 100ml Double Strength Coffee
+    \item 400g Raspberries (blitzed)
+    \item 200g Mascarpone
+    \item 2 tbsp Sweetener
+    \item 1 tsp Vanilla Extract
+    \item 700g Vanilla Yogurt
+    \item 15g Dark Chocolate (finely grated)
+\end{itemize}
+\columnbreak
+\textit{For the Crumble Mixture}:
+\begin{itemize}
+    \item 80g Wholemeal Flour
+    \item 80g Plain Flour
+    \item 80g Butter (diced)
+    \item 70g Demerara Sugar
+\end{itemize}
+\end{multicols}
+{\Large Instructions}\\
+Preheat the over to Gas Mark 4, Electric $180^\circ$C, Fan $160^\circ$C.
+\begin{enumerate}
+    \item Stir the two kinds of flour together in a bowl, add the butter and rub it into the flour. When the mixture looks like breadcrumbs, mix in the brown sugar. Lay the mixture on a shallow baking tray and bake for 25-30 minutes until golden brown. Leave on the side to cool.
+    \item Mix together the mascarpone, sweetener, vanilla extract, and three quarters of the chocolate. Put half the crumble mixture in each of the glasses and pour over half the quark mixture along with half the raspberries.
+    \item Put the other half of the crumble mixture on top, followed by the remaining quark mixture and raspberries. Sprinkle over the last of the chocolate. Chill for 3 hours before serving.
+\end{enumerate}
+
+\end{document}
+
