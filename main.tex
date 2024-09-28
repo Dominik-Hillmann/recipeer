@@ -1,0 +1,167 @@
+\documentclass[11pt]{report}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage{extramarks}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage[normalem]{ulem}
+%% Please revise the following command, if your babel
+%% package does not support en-US
+\usepackage[german]{babel}
+\usepackage{color}
+\usepackage{hyperref}
+\usepackage{pgffor}
+\usepackage{filecontents}% Used so that the external files can be placed in this file
+\usepackage{multicol}
+\usepackage{color}
+\usepackage{nicefrac}
+\usepackage{lmodern}
+\usepackage{gensymb}
+\usepackage{titlesec}
+\usepackage{blindtext}
+\usepackage{enumitem}
+\usepackage{xcolor, soul}
+
+%[nowarnings]
+\usepackage{xcookybooky}
+\usepackage[Conny]{fncychap}
+% Bjornstrup
+
+% To use \getenv to insert values from env variables.
+\usepackage{catchfile}
+\newcommand{\getenv}[2][]{%
+  \CatchFileEdef{\temp}{"|kpsewhich --var-value #2"}{\endlinechar=-1}%
+  \if\relax\detokenize{#1}\relax\temp\else\let#1\temp\fi}
+
+% Margins
+%\topmargin=-0.5in
+\evensidemargin=0in
+\oddsidemargin=0in
+%\textwidth=7.5in
+%\textheight=9.0in
+%\headsep=0.25in 
+
+% command to provide stretchy vertical space in proportion
+\newcommand\nbvspace[1][3]{\vspace*{\stretch{#1}}}
+% allow some slack to avoid under/overfull boxes
+\newcommand\nbstretchyspace{\spaceskip0.5em plus 0.25em minus 0.25em}
+% To improve spacing on titlepages
+\newcommand{\nbtitlestretch}{\spaceskip0.6em}
+
+\newcommand{\newrecipe}{{\newpage}}
+
+%\begin{titlepage}
+%\title{Recipes}
+%\author{The Hickson Family}
+%\date{December 2019}
+%\end{titlepage}
+
+\titleclass{\part}{top} % make part like a chapter
+\titleformat{\part}
+[display]
+{\centering\normalfont\Huge\bfseries}
+{\titlerule[5pt]\vspace{3pt}\titlerule[2pt]\vspace{3pt}\MakeUppercase{\partname} \thepart}
+{0pt}
+{\titlerule[2pt]\vspace{1pc}\huge\MakeUppercase}
+%
+
+\begin{document}
+%\maketitle
+
+\begin{titlepage}
+\begin{center}
+\bfseries
+\nbvspace[1]
+\Huge
+{\nbtitlestretch\huge
+Hickson Family Recipes}
+
+\nbvspace[1]
+\normalsize
+
+Family Recipes\\
+Collected Together
+\nbvspace[1]
+\small BY\\
+\Large The Hickson Family\\[0.5em]
+%\footnotesize AUTHOR OF ``A WORKING ALGEBRA,'' ``WIRELESS TELEGRAPHY,\\
+%ITS HISTORY, THEORY AND PRACTICE,'' ETC., ETC.
+
+\nbvspace[2]
+
+\includegraphics[width=6in]{img/junker1.png}
+\nbvspace[3]
+\normalsize
+
+%DOHA\\
+%\large
+%PUBLISHED IN THE WILD
+\nbvspace[1]
+\end{center}
+\end{titlepage}
+
+\pagecolor{lightgray}
+\begin{multicols}{3}
+[
+\section{First Section}
+\getenv{DATE}
+All human things are subject to decay. And when fate summons, Monarchs must obey.
+]
+    \raggedcolumns
+    \begin{itemize}[label={}, labelsep=0pt, leftmargin=0pt]
+        \item test
+        \item noch eins
+        \item sadljknsadjnasodfnnlj fl fasdfiu asdhfads bfkadsbfklba sdjfb asdjkbf jkdsabf kljadshbij fs
+    \end{itemize}
+    \columnbreak
+
+    \begin{enumerate}
+        \item Das ist ein Test. Das ist ein Test. Das ist ein TEst.blindtext
+        \item Noch ein Test. Noch ein Test. Noch ein Test.
+        Noch ein Test. Noch ein Test. Noch ein Test. Noch ein Test. Noch ein Test.
+        Noch ein Test. Noch ein Test. Noch ein Test. Noch ein Test. Noch ein Test. Noch ein Test.
+        Noch ein Test.
+
+        \item \blindtext
+        \item \blindtext\blindtext
+    \end{enumerate}
+\end{multicols}
+\clearpage\null\vfill
+
+\includegraphics[width=\textwidth]{img/junker1.png}
+
+\pagestyle{empty}
+\begin{minipage}[b]{0.9\textwidth}
+\footnotesize\raggedright
+\setlength{\parskip}{0.5\baselineskip}
+Copyright \copyright 2019--\the\year\ Steven Hickson\par
+Permission is granted to copy, distribute and\slash or modify 
+the template of this document but not the contents or recipes. 
+\end{minipage}
+\vspace*{2\baselineskip}
+\cleardoublepage
+\rfoot{\thepage}
+
+%\pagestyle{headings}
+% This sets up the header and adds the page number.
+\pagestyle{fancy}
+\fancyhead[R,L]{\leftmark\hspace*{\hfill}Page \thepage}
+%\pagenumbering{arabic}
+%\fancyfoot[R]{\thepage}
+
+%\setcounter{tocdepth}{1}
+\tableofcontents
+
+% This adds the chapter to the top
+
+\part{Breads and Breakfast}
+\chapter{Breads}
+\begin{figure}[h]
+\begin{center}
+   \includegraphics[width=0.9\linewidth, angle=270]{img/junker1.png}
+\end{center}
+\end{figure}
+\newpage
+
+
+\end{document}
