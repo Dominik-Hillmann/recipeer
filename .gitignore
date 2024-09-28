@@ -300,3 +300,7 @@ TSWLatexianTemp*
 # Uncomment the next line to have this generated file ignored.
 #*Notes.bib
 
+.idea/
+
+# Do not commit output
+main.pdf
