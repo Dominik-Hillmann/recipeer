@@ -1,0 +1,7 @@
+environment: test
+
+ingress:
+  tlsSecretName: recipeer-test
+  clusterIssuer: letsencrypt-test
+  hosts:
+    - staging.recipeer.dominik-hillmann.xyz

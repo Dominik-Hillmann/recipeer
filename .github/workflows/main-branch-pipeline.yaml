@@ -1,0 +1,169 @@
+name: Master branch workflow
+
+on:
+  push:
+    branches:
+      - master
+
+env:
+  REPO_NAME: recipeer
+  REPO_SHORTHAND: rcpr
+  REPO_OWNER: Dominik-Hillmann
+  ENV_NAME: prod
+
+jobs:
+  calculate-version:
+    name: Calculate version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Calculate version
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Commit SHA: $COMMIT_SHA"
+          reply=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/commits/$COMMIT_SHA/pulls")
+          echo "Reply: $reply"          
+          
+          pr_number=$(echo "$reply" | jq -r '.[0].number')
+          major_minor=$(cat VERSION)
+          version="$major_minor.$pr_number"
+          echo "Calculated version: $version"
+          echo "$version" > FULL_VERSION
+
+      - name: Upload variable as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: FULL_VERSION
+          path: FULL_VERSION
+
+  promote-image:
+    name: Promote image
+    runs-on: ubuntu-latest
+    needs: calculate-version
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Download FULL_VERSION file
+        uses: actions/download-artifact@v3
+        with:
+          name: FULL_VERSION
+          path: .
+
+      - name: Read FULL_VERSION file
+        run: echo "VERSION=$(cat FULL_VERSION)" >> $GITHUB_ENV
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PUSH_TOKEN }}
+
+      - name: Pull staging image
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+        run: docker pull "$DOCKERHUB_USERNAME/$REPO_NAME:$VERSION-stage"
+
+      - name: Tag image for production
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+        run: |
+          docker tag \
+            "$DOCKERHUB_USERNAME/$REPO_NAME:$VERSION-stage" \
+            "$DOCKERHUB_USERNAME/$REPO_NAME:$VERSION"
+
+      - name: Push production image to Docker Hub
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+        run: docker push "$DOCKERHUB_USERNAME/$REPO_NAME:$VERSION"
+
+      - name: Delete staging image from Docker Hub
+        env:
+          DOCKER_HUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKER_HUB_ACCESS_TOKEN: ${{ secrets.DOCKERHUB_PUSH_TOKEN }}
+        run: |
+          image_name="$DOCKER_HUB_USERNAME/$REPO_NAME"
+          staging_tag="$VERSION-stage"
+          
+          reply=$(curl -s -H "Content-Type: application/json" -X POST \
+            -d "{\"username\": \"$DOCKER_HUB_USERNAME\", \"password\": \"$DOCKER_HUB_ACCESS_TOKEN\"}" \
+            "https://hub.docker.com/v2/users/login/")
+          hub_token=$(echo $reply | jq -r '.token')
+                    
+          curl -i -X DELETE \
+            -H "Accept: application/json" \
+            -H "Authorization: JWT $hub_token" \
+            https://hub.docker.com/v2/repositories/$image_name/tags/$staging_tag/
+
+  main-branch-deployment:
+    name: Deployment to K8s production environment
+    runs-on: ubuntu-latest
+    needs: promote-image
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Download FULL_VERSION file
+        uses: actions/download-artifact@v3
+        with:
+          name: FULL_VERSION
+          path: .
+
+      - name: Read FULL_VERSION file
+        run: echo "VERSION=$(cat FULL_VERSION)" >> $GITHUB_ENV
+
+      - name: Deploy to cluster
+        uses: wahyd4/kubectl-helm-action@3.13
+        env:
+          KUBE_CONFIG_DATA: ${{ secrets.KUBECONFIG_B64 }}
+        with:
+          args: |
+            helm upgrade \
+              --values chart/values.yaml \
+              --values chart/values-$ENV_NAME.yaml \
+              "$REPO_NAME" chart/ \
+              --install \
+              --namespace $REPO_SHORTHAND-$ENV_NAME \
+              --set image.tag="$VERSION" \
+              --set appVersion="$VERSION"
+
+  create-version-tag:
+    name: Set a tag with new version
+    runs-on: ubuntu-latest
+    needs: main-branch-deployment
+    permissions:
+      contents: write
+    steps:
+
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Download FULL_VERSION file
+        uses: actions/download-artifact@v3
+        with:
+          name: FULL_VERSION
+          path: .
+
+      - name: Read FULL_VERSION file
+        run: echo "VERSION=$(cat FULL_VERSION)" >> $GITHUB_ENV
+
+      - name: Create version tag
+        env:
+          GIT_MAIL_ADDRESS: "${{ secrets.GIT_MAIL_ADDRESS }}"
+        run: |
+          git config --local user.email "$GIT_MAIL_ADDRESS"
+          git config --local user.name "$REPO_OWNER"
+          git tag "$VERSION"
+          git push --tags

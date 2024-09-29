@@ -1,0 +1,206 @@
+name: Feature branch workflow
+
+on:
+  push:
+    branches:
+      - feat**
+      - fix**
+      - build**
+      - chore**
+      - ci**
+      - docs**
+      - style**
+      - refactor**
+      - perf**
+      - test**
+      - dependabot**
+
+env:
+  REPO_NAME: recipeer
+  REPO_SHORTHAND: rcpr
+  REPO_OWNER: Dominik-Hillmann
+  ENV_NAME: test
+
+jobs:
+  calculate-version:
+    name: Calculate version
+    runs-on: ubuntu-latest
+    permissions: read-all
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get PR number if it exists
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Commit SHA: $COMMIT_SHA"
+          reply=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/commits/$COMMIT_SHA/pulls")
+          pr_number=$(echo "$reply" | jq -r '.[0].number')
+          echo "PR_NUMBER=$pr_number" >> $GITHUB_ENV
+
+      - name: Calculate version
+        run: |
+          major_minor=$(cat VERSION)
+          version="$major_minor.$PR_NUMBER"
+          echo "Calculated version: $version"
+          echo "$version" > FULL_VERSION
+
+      - name: Upload variable as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FULL_VERSION
+          path: FULL_VERSION
+
+  gitleaks:
+    name: Look for leaked secrets with Gitleaks
+    permissions:
+      contents: read
+      pull-requests: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Fetch all history for all branches and tags
+          fetch-depth: 0
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    name: Run LaTeX build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # TODO: needs arbitrary command because I want the version to be displayed.
+      - name: Compile LaTeX document
+        uses: xu-cheng/latex-action@v3
+        with:
+          root_file: main.tex
+
+      - name: Upload PDF file
+        uses: actions/upload-artifact@v4
+        with:
+          name: main.pdf
+          path: main.pdf
+
+  create-staging-image:
+    name: Build staging image
+    runs-on: ubuntu-latest
+    needs:
+      - calculate-version
+      - build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download FULL_VERSION file
+        uses: actions/download-artifact@v4
+        with:
+          name: FULL_VERSION
+          path: .
+
+      - name: Read FULL_VERSION file
+        run: echo "VERSION=$(cat FULL_VERSION)" >> $GITHUB_ENV
+
+      - name: Download recipe PDF file
+        uses: actions/download-artifact@v4
+        with:
+          name: main.pdf
+          path: main.pdf
+
+      - name: Calculate image name
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+        run: echo "IMAGE_NAME=$DOCKERHUB_USERNAME/$REPO_NAME:$VERSION-stage" >> $GITHUB_ENV
+
+      - name: Set up Docker buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: docker build --tag "$IMAGE_NAME" .
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PUSH_TOKEN }}
+
+      - name: Push staging version to Docker Hub
+        run: docker push "$IMAGE_NAME"
+
+  test-deployment:
+    name: Deployment to K8s staging environment
+    runs-on: ubuntu-latest
+    needs: create-staging-image
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Download FULL_VERSION file
+        uses: actions/download-artifact@v4
+        with:
+          name: FULL_VERSION
+          path: .
+
+      - name: Read FULL_VERSION file
+        run: echo "VERSION=$(cat FULL_VERSION)" >> $GITHUB_ENV
+
+      - name: Deploy to cluster staging environment
+        uses: wahyd4/kubectl-helm-action@3.13
+        env:
+          KUBE_CONFIG_DATA: ${{ secrets.KUBECONFIG_B64 }}
+        with:
+          args: |
+            helm upgrade --install \
+              --values chart/values.yaml \
+              --values chart/values-$ENV_NAME.yaml \
+              "$REPO_NAME" chart/ \
+              --namespace "$REPO_SHORTHAND-$ENV_NAME" \
+              --set image.tag="$VERSION" \
+              --set appVersion="$VERSION"
+
+  vulnerability_scan:
+    name: Vulnerability scan by Trivy
+    runs-on: ubuntu-latest
+    needs: create-staging-image
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download FULL_VERSION file
+        uses: actions/download-artifact@v4
+        with:
+          name: FULL_VERSION
+          path: .
+
+      - name: Set FULL_VERSION to be used in next step
+        run: echo "FULL_VERSION=$(cat FULL_VERSION)" >> $GITHUB_ENV
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.REPO_NAME }}:${{ env.FULL_VERSION }}-stage
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+        env:
+          TRIVY_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          TRIVY_PASSWORD: ${{ secrets.DOCKERHUB_PUSH_TOKEN }}

@@ -1,0 +1,19 @@
+---
+
+replicaCount: 2
+labels:
+  - recipeer
+resourcesName: recipeer
+
+image:
+  repository: dominikhillmann/recipeer
+  pullPolicy: IfNotPresent
+  # The image tag will always be determined in the pipeline.
+  # It will follow the convention "$(< VERSION).$PR_NUMBER$([ $is_test_env ] && echo -stage)"
+  tag: TBD
+
+service:
+  type: ClusterIP
+  port: 80
+
+resources: {}
